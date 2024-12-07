@@ -154,17 +154,12 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
-            let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
-                    DIB(cx),
-                    pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
-                    0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_c_char_ptr(),
-                    ptr_type_debuginfo_name.len(),
-                )
-            };
+            let di_node = DIB(cx).create_pointer_type(
+                pointee_type_di_node,
+                data_layout.pointer_size,
+                data_layout.pointer_align.abi,
+                &ptr_type_debuginfo_name,
+            );
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
         }
@@ -212,17 +207,12 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 
                     // The data pointer type is a regular, thin pointer, regardless of whether this
                     // is a slice or a trait object.
-                    let data_ptr_type_di_node = unsafe {
-                        llvm::LLVMRustDIBuilderCreatePointerType(
-                            DIB(cx),
-                            pointee_type_di_node,
-                            addr_field.size.bits(),
-                            addr_field.align.abi.bits() as u32,
-                            0, // Ignore DWARF address space.
-                            std::ptr::null(),
-                            0,
-                        )
-                    };
+                    let data_ptr_type_di_node = DIB(cx).create_pointer_type(
+                        pointee_type_di_node,
+                        addr_field.size,
+                        addr_field.align.abi,
+                        "",
+                    );
 
                     smallvec![
                         build_field_di_node(
@@ -302,24 +292,11 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
-        ty::FnDef(..) => (0, 1),
-        ty::FnPtr(..) => (
-            cx.tcx.data_layout.pointer_size.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-        ),
+        ty::FnDef(..) => (Size::ZERO, Align::ONE),
+        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
         _ => unreachable!(),
     };
-    let di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreatePointerType(
-            DIB(cx),
-            fn_di_node,
-            size,
-            align,
-            0, // Ignore DWARF address space.
-            name.as_c_char_ptr(),
-            name.len(),
-        )
-    };
+    let di_node = DIB(cx).create_pointer_type(fn_di_node, size, align, &name);
 
     DINodeCreationResult::new(di_node, false)
 }
