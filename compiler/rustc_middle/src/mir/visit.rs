@@ -222,13 +222,6 @@ macro_rules! make_mir_visitor {
                 self.super_ty(ty);
             }
 
-            fn visit_user_type_projection(
-                &mut self,
-                ty: & $($mutability)? UserTypeProjection,
-            ) {
-                self.super_user_type_projection(ty);
-            }
-
             fn visit_user_type_annotation(
                 &mut self,
                 index: UserTypeAnnotationIndex,
@@ -818,14 +811,13 @@ macro_rules! make_mir_visitor {
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
                                      variance: $(& $mutability)? ty::Variance,
-                                     user_ty: & $($mutability)? UserTypeProjection,
+                                     _user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.visit_place(
                     place,
                     PlaceContext::NonUse(NonUseContext::AscribeUserTy($(* &$mutability *)? variance)),
                     location
                 );
-                self.visit_user_type_projection(user_ty);
             }
 
             fn super_coverage(&mut self,
@@ -850,7 +842,7 @@ macro_rules! make_mir_visitor {
                 let LocalDecl {
                     mutability: _,
                     ty,
-                    user_ty,
+                    user_ty: _,
                     source_info,
                     local_info: _,
                 } = local_decl;
@@ -861,11 +853,6 @@ macro_rules! make_mir_visitor {
                     local,
                     source_info: *source_info,
                 });
-                if let Some(user_ty) = user_ty {
-                    for (user_ty, _) in & $($mutability)? user_ty.contents {
-                        self.visit_user_type_projection(user_ty);
-                    }
-                }
             }
 
             fn super_var_debug_info(
@@ -943,12 +930,6 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span($(& $mutability)? *span);
                 self.visit_source_scope($(& $mutability)? *scope);
-            }
-
-            fn super_user_type_projection(
-                &mut self,
-                _ty: & $($mutability)? UserTypeProjection,
-            ) {
             }
 
             fn super_user_type_annotation(
