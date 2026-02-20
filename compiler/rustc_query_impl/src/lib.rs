@@ -217,23 +217,20 @@ impl<'tcx, C: QueryCache, const FLAGS: QueryFlags> SemiDynamicQueryDispatcher<'t
     }
 }
 
-/// Provides access to vtable-like operations for a query
-/// (by creating a [`SemiDynamicQueryDispatcher`]),
-/// but also keeps track of the "unerased" value type of the query
-/// (i.e. the actual result type in the query declaration).
+/// Trait that knows how to look up the [`QueryVTable`] for a particular query,
+/// and can combine it with static query flags to produce a
+/// [`SemiDynamicQueryDispatcher`].
 ///
 /// This trait allows some per-query code to be defined in generic functions
 /// with a trait bound, instead of having to be defined inline within a macro
 /// expansion.
 ///
 /// There is one macro-generated implementation of this trait for each query,
-/// on the type `rustc_query_impl::query_impl::$name::QueryType`.
-trait QueryDispatcherUnerased<'tcx, C: QueryCache, const FLAGS: QueryFlags> {
-    type UnerasedValue;
+/// on the type `rustc_query_impl::query_impl::$name::VTableGetter`.
+trait GetQueryVTable<'tcx, const FLAGS: QueryFlags> {
+    type Cache: QueryCache + 'tcx;
 
-    fn query_dispatcher(tcx: TyCtxt<'tcx>) -> SemiDynamicQueryDispatcher<'tcx, C, FLAGS>;
-
-    fn restore_val(value: C::Value) -> Self::UnerasedValue;
+    fn query_dispatcher(tcx: TyCtxt<'tcx>) -> SemiDynamicQueryDispatcher<'tcx, Self::Cache, FLAGS>;
 }
 
 pub fn query_system<'tcx>(
